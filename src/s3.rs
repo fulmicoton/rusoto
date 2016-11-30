@@ -10208,6 +10208,10 @@ impl<P, D> S3Client<P, D> where P: ProvideAwsCredentials, D: DispatchSignedReque
         }
         path = format!("{}{}", path, &input.key);
         let mut request = SignedRequest::new("GET", "s3", self.region, &path);
+        if let Some(ref range) = input.range {
+            request.add_header("Range", &range);
+        }
+
         let mut params = Params::new();
 
         if is_dns_compatible(&input.bucket) {
@@ -10223,9 +10227,8 @@ impl<P, D> S3Client<P, D> where P: ProvideAwsCredentials, D: DispatchSignedReque
         let status = result.status;
 
         match status {
-            200 => {
+            200 | 206 => {
                 let s3_object = try!(S3Client::<P,D>::get_object_from_response(&mut result));
-
                 Ok(s3_object)
             }
             _ => {
